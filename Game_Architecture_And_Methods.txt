@@ -1,0 +1,220 @@
+================================================================================
+           ECHOES OF THE LOST KINGDOM - ARCHITECTURE, CLASSES & METHODS
+================================================================================
+
+1. WHAT IS THE GAME & HOW DOES IT WORK?
+--------------------------------------------------------------------------------
+"Echoes of the Lost Kingdom" is a 2D top-down Action-Adventure RPG built entirely
+in pure Java (JDK 17+) using Java Swing (JPanel, JFrame) and Java AWT (Graphics2D)
+with ZERO third-party libraries or game engines.
+
+Game Objective & Story Flow:
+- The player awakens in "The Forgotten Village" as a hero destined to purge the
+  corruption caused by King Malakor.
+- The player visits Elder Vaelen to obtain the sacred quest and village blessing.
+- Journey through 6 interconnected handcrafted 50x50 tile worlds:
+    1. The Forgotten Village (Hub, merchants, shops, NPCs)
+    2. Whispering Forest (Exploration, slimes, goblins, hidden ruins key)
+    3. Ancient Ruins (Skeletons, golems, Mini-Boss: Ruins Guardian, Sunstone Relic)
+    4. Crystal Caves (3-Altar interactive crystal environmental puzzle)
+    5. Shadow Dungeon (Spike traps, floor switches, sorcerers, Shadow Orb)
+    6. Lost King's Fortress (Final Boss: Corrupted King Malakor Phase 1 & 2)
+- Overcomes hazards, opens locked doors with keys, loots chests, manages inventory,
+  and restores peace to the kingdom.
+
+How the Custom Engine Works Under the Hood:
+- Fixed 60 FPS Game Loop: Uses Java's high-resolution System.nanoTime() with a
+  delta-time accumulator. Every 16.66ms (1 sec / 60 frames), it executes:
+    1. update(): Runs game logic, physics, entity velocity, collision checks,
+       monster AI routines, combat calculations, and map transition triggers.
+    2. repaint() -> paintComponent(): Renders the frame using double-buffering.
+       Draws tiles, interactive objects, and depth-sorted entities (Y-sorting
+       for true isometric 2D depth) followed by UI overlays.
+- Finite State Machine: gp.gameState controls flow across 8 distinct states:
+    TITLE_STATE (0), PLAY_STATE (1), PAUSE_STATE (2), DIALOGUE_STATE (3),
+    INVENTORY_STATE (4), SHOP_STATE (5), GAME_OVER_STATE (6), VICTORY_STATE (7).
+- Viewport Camera Clamping: Keeps the camera centered on the player while strictly
+  clamping at world bounds [0, maxWorld - screenDimension] so black screen voids
+  never appear.
+
+
+================================================================================
+2. CORE PACKAGES, CLASSES AND WHY THEY ARE USED
+================================================================================
+
+--- PACKAGE: MAIN (Engine Core & Subsystems) ---
+1. Main.java
+   - Why used: Application entry point. Creates the JFrame window, sets title,
+     prevents resizing, adds GamePannel, centers window on desktop, and starts thread.
+2. GamePannel.java
+   - Why used: Central controller of the engine. Extends JPanel and implements
+     Runnable. Holds game loop, screen resolution (960x720), world size (2400x2400),
+     state machine, entity arrays, and references to all subsystems.
+3. KeyHandler.java
+   - Why used: Implements KeyListener. Captures keyboard inputs (WASD, Arrow keys,
+     Enter, E, Escape, Space, P, I) and routes them according to current gameState.
+4. CollisionChecker.java
+   - Why used: Physics & collision engine. Performs AABB (Axis-Aligned Bounding Box)
+     checks against solid map tiles, interactive objects, NPCs, monsters, and player.
+5. EventHandler.java
+   - Why used: World transition & environmental trigger manager. Checks coordinates
+     for map gates, teleports player between maps, and manages lava damage hazards.
+6. QuestManager.java
+   - Why used: Progression tracker. Tracks quest stages, flags (talkedToElder,
+     ruinsKeyFound, ruinsGuardianDefeated, cavesPuzzleSolved, shadowOrbRecovered),
+     and provides objective text for the HUD banner.
+7. SaveManager.java
+   - Why used: Persistence engine. Serializes player stats, inventory, position,
+     current map, opened chests, and unlocked doors to a binary file ("save_data.dat").
+8. Sound.java
+   - Why used: Audio engine. Synthesizes 8-bit algorithmic retro chiptune background
+     melodies and sound effects (swords, hits, coins, level-up) using javax.sound.sampled.
+9. UI.java
+   - Why used: HUD and GUI renderer. Draws player hearts, gold, keys, quest tracker,
+     dialogue boxes, inventory grid with cursor, merchant shop, title screen,
+     game over screen, and victory sequence.
+10. AssetSetter.java
+    - Why used: Object & entity factory. Spawns items, chests, doors, NPCs, and
+      monsters at specific tile positions for each of the 6 game maps.
+11. MapGenerator.java
+    - Why used: Level generation utility that programmatically generates and saves
+      handcrafted 50x50 map data files (map01.txt to map06.txt) for all 6 worlds.
+12. AutomatedGameTest.java
+    - Why used: Headless test runner executing 78 assertions across 20 acceptance
+      criteria covering movement, combat, camera clamping, saves, and boss phases.
+
+--- PACKAGE: Entity (Player, NPCs, Enemies & Projectiles) ---
+1. entity.java
+   - Why used: Abstract base class for all mobile actors. Holds world coordinates,
+     speed, directional sprites, collision bounding box, HP, combat timers,
+     invincibility frames, and action AI routines.
+2. Player.java
+   - Why used: Subclass of entity controlled by user input. Manages inventory,
+     attacking hitboxes, interaction logic (Enter/E), equipment stats, and gold.
+3. NPC_Elder.java, NPC_Merchant.java, NPC_Guard.java, NPC_Hermit.java
+   - Why used: Friendly non-player characters with specific dialogue trees, trade
+     menus, or progression requirements.
+4. MON_Slime.java, MON_Goblin.java, MON_Skeleton.java, MON_Golem.java, MON_Cultist.java
+   - Why used: Hostile enemy classes with custom AI behaviors, roaming patterns,
+     aggro radii, and loot drop tables (coins, health potions).
+5. BOSS_RuinsGuardian.java (Mini-Boss)
+   - Why used: High-HP guardian protecting the Crystal Caves tunnel entrance.
+6. BOSS_CorruptedKing.java (Final Boss)
+   - Why used: Final boss featuring 2-phase combat: Phase 1 standard melee attack;
+     Phase 2 enraged mode (double speed, projectile dark orb barrage, flaming aura).
+7. Projectile.java, PROJ_Arrow.java, PROJ_DarkOrb.java, PROJ_SwordWave.java
+   - Why used: Ranged attacks fired by player or enemies with custom trajectories
+     and collision-triggered damage.
+
+--- PACKAGE: Object (Interactive Items & Props) ---
+1. SuperObject.java
+   - Why used: Base class for all world objects and items (name, image, collision
+     box, world coordinates, interaction behavior).
+2. OBJ_Chest.java
+   - Why used: Interactive treasure chest that opens when interacted with, grants
+     gold rewards, and updates save state.
+3. OBJ_Door.java, OBJ_Key.java, OBJ_Key_Ruins.java, OBJ_Key_Dungeon.java
+   - Why used: Lock and key gating system to unlock gated dungeon pathways.
+4. OBJ_Potion_Red.java, OBJ_Potion_Blue.java
+   - Why used: Consumable items in inventory that heal player life or restore mana.
+5. OBJ_Sword_Silver.java, OBJ_Boots.java, OBJ_Shield.java
+   - Why used: Equipment upgrades increasing player attack power, speed, or defense.
+6. OBJ_Relic_Sunstone.java, OBJ_Relic_ShadowOrb.java
+   - Why used: Key relics required to break King Malakor's barrier in the fortress.
+7. OBJ_Switch.java
+   - Why used: Floor pressure plate switch that lowers spike gates in Shadow Dungeon.
+
+--- PACKAGE: tile (Environment Rendering) ---
+1. Tile.java
+   - Why used: Represents a single tile definition (BufferedImage sprite, boolean collision).
+2. TileManager.java
+   - Why used: Loads map files into memory (50x50 int matrix for each map), applies
+     camera viewport offsets, and renders visible tiles to screen with frustum culling.
+
+
+================================================================================
+3. KEY METHODS AND HOW THEY WORK
+================================================================================
+
+1. GamePannel.run()
+   - Signature: public void run()
+   - How it works: Runs on a dedicated Thread. Implements the 60 FPS game loop using
+     System.nanoTime(). Computes delta time; when delta reaches 1.0 (every 16.66ms),
+     it calls update() and repaint(), maintaining steady 60 FPS without CPU choking.
+
+2. GamePannel.update()
+   - Signature: public void update()
+   - How it works: Only executes when gameState == PLAY_STATE. Calls player.update(),
+     updates all active NPCs, iterates monsters to update position/AI, removes dead
+     monsters, and moves active projectiles.
+
+3. GamePannel.paintComponent(Graphics g)
+   - Signature: public void paintComponent(Graphics g)
+   - How it works: Overrides JPanel rendering. If gameState == TITLE_STATE, renders
+     title graphics. Otherwise, renders tiles via tileM.draw(), renders interactive
+     objects, adds player + NPCs + monsters to entityList, sorts them by worldY
+     (isometric Y-sorting), draws each entity, and finishes with ui.draw(g2).
+
+4. GamePannel.getCameraX() / getCameraY()
+   - Signatures: public int getCameraX(), public int getCameraY()
+   - How it works:
+       int camX = player.worldX - (screenwidth / 2 - tileSize / 2);
+       return Math.max(0, Math.min(camX, worldWidth - screenwidth));
+     Clamps camera so that when player reaches map edges, camera stops and does not
+     scroll into non-existent void space.
+
+5. Player.update()
+   - Signature: public void update()
+   - How it works: Checks keyboard booleans. If arrow/WASD pressed, sets direction,
+     checks collision with tiles, objects, NPCs, and monsters via gp.checker.
+     If collisionOn == false, updates worldX/worldY by speed. Manages 40-frame
+     invincibility cooldown and sprite animation cycle.
+
+6. Player.interactWithNearby()
+   - Signature: public void interactWithNearby()
+   - How it works: Fires when player presses ENTER or E. Projects a probe box 24px
+     ahead of player's facing direction. If it collides with an object (e.g. chest,
+     door) or NPC, executes obj.interact(gp) or npc.speak().
+
+7. Player.damageMonster(int i, int attackDamage)
+   - Signature: public void damageMonster(int i, int attackDamage)
+   - How it works: Inflicts damage to monster at index i. Triggers monster invincibility
+     frames, plays hit SFX, activates damage reaction, and if monster HP <= 0,
+     sets monster.dying = true and triggers checkDrop() to spawn gold or potions.
+
+8. CollisionChecker.checkTile(entity e)
+   - Signature: public void checkTile(entity e)
+   - How it works: Computes left, right, top, and bottom world boundaries of entity's
+     solidArea. Predicts next position based on direction and speed. Checks the two
+     tiles entity is about to intersect in mapTileNum matrix. If either tile is solid
+     (tile.collision == true), sets e.collisionOn = true to halt movement.
+
+9. EventHandler.checkEvent() & teleport(int targetMap, int col, int row)
+   - Signatures: public void checkEvent(), public void teleport(int targetMap, int col, int row)
+   - How it works: Checks if player coordinates cross boundary zones (e.g., Map 0 col 48).
+     Verifies if required quest flag is met (e.g., talkedToElder). If valid, calls
+     teleport() which updates gp.currentMap, resets player position, reloads objects,
+     NPCs, and monsters for the new map via AssetSetter, and starts appropriate music.
+
+10. QuestManager.advanceQuest(int newStage)
+    - Signature: public void advanceQuest(int newStage)
+    - How it works: Increments questStage, plays level-up jingle, updates objective
+      text, and triggers progression unlocks across NPC dialogue and world gates.
+
+11. SaveManager.saveGame() & loadGame()
+    - Signatures: public void saveGame(), public void loadGame()
+    - How it works: Opens ObjectOutputStream to "save_data.dat". Writes player stats
+      (HP, maxHP, gold, attack, defense), current map, world coordinates, inventory
+      items, quest flags, opened chest IDs, and unlocked door IDs. loadGame() restores
+      all state variables upon startup or selecting "CONTINUE".
+
+12. TileManager.draw(Graphics2D g2)
+    - Signature: public void draw(Graphics2D g2)
+    - How it works: Loops through map matrix. Calculates screen coordinates:
+        screenX = worldX - gp.getCameraX();
+        screenY = worldY - gp.getCameraY();
+      Uses frustum culling: only invokes g2.drawImage() if screen coordinates fall
+      within visible screen bounds, drastically minimizing GPU/CPU render overhead.
+
+================================================================================
+
